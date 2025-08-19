@@ -71,7 +71,7 @@ void DFS(int v, int G[][MAX_VERTICES], int numVertices, bool visitados[]){
 
             // Adiciona vizinhos do vértice atual na pilha
             // Se houver aresta (atual -> e) e o vizinho não foi visitado
-            for(int e = 0; e < numVertices; e++){
+            for(int e = numVertices - 1; e >= 0; e--){
                 if(G[atual][e] == 1 && !foiVisitado(e, visitados, numVertices)){
                     empilhar(S, e);
                 }
