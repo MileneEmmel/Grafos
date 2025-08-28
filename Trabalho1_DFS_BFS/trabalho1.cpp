@@ -51,63 +51,86 @@ void visitar(int v, bool visitados[], int numVertices){
     visitados[v] = true;
 }
 
-// Função: DFS (busca em profundidade)
-// Estratégia LIFO (último que entra é o primeiro que sai).
-void DFS(int v, int G[][MAX_VERTICES], int numVertices, bool visitados[]){
-    Pilha S;
-    criarPilha(S, MAX_VERTICES);
-
-    // Começamos empilhando o vértice inicial
-    empilhar(S, v);
-
-    // Enquanto houver vértices na pilha
-    while(!vazia(S)){
-        int atual;
-        desempilhar(S, atual); // Pega o último vértice inserido
-
-        // Se ainda não foi visitado, processamos ele
-        if(!foiVisitado(atual, visitados, numVertices)){
-            visitar(atual, visitados, numVertices);
-
-            // Adiciona vizinhos do vértice atual na pilha
-            // Se houver aresta (atual -> e) e o vizinho não foi visitado
-            for(int e = numVertices - 1; e >= 0; e--){
-                if(G[atual][e] == 1 && !foiVisitado(e, visitados, numVertices)){
-                    empilhar(S, e);
-                }
-            }
-        } 
-    } 
-    destruirPilha(S); // Libera memória da pilha
-}
-
 // Função: BFS (busca em largura)
 // Estratégia FIFO (primeiro que entra é o primeiro que sai).
 void BFS(int v, int G[][MAX_VERTICES], int numVertices, bool visitados[]){
     Fila Q;
     criarFila(Q, MAX_VERTICES);
 
-    // Coloca o vértice inicial na fila
-    enfileirar(Q, v);
+    if (v >= 0 && v < numVertices && !visitados[v])
+        enfileirar(Q, v);
 
-    // Enquanto houver vértices na fila
-    while(!vazia(Q)){
-        int t;
-        desenfileirar(Q, t); // Retira o primeiro da fila
+    while (true) {
+        // percorre a componente atual
+        while (!vazia(Q)) {
+            int t;
+            desenfileirar(Q, t);
 
-        // Se ainda não visitado, processamos
-        if(!foiVisitado(t, visitados, numVertices)){
-            visitar(t, visitados, numVertices);
+            if (!foiVisitado(t, visitados, numVertices)) {
+                visitar(t, visitados, numVertices);
 
-            // Adiciona todos os vizinhos não visitados na fila
-            for(int i=0; i<numVertices; i++){
-                if(G[t][i]==1 && !foiVisitado(i, visitados, numVertices))
-                    enfileirar(Q, i);
+                // enfileira vizinhos
+                for (int i = 0; i < numVertices; ++i) {
+                    if (G[t][i] == 1 && !foiVisitado(i, visitados, numVertices))
+                        enfileirar(Q, i);
+                }
             }
         }
+
+        // componente atual terminada -> procura próximo vértice não visitado
+        int proximo = -1;
+        for (int i = 0; i < numVertices; ++i) {
+            if (!visitados[i]) { proximo = i; break; }
+        }
+        if (proximo == -1) break; // todos visitados, termina BFS
+        enfileirar(Q, proximo); // inicia nova componente
     }
-    destruirFila(Q); // Libera memória da fila
+
+    destruirFila(Q);
 }
+
+// Função: DFS (busca em profundidade)
+// Estratégia LIFO (último que entra é o primeiro que sai).
+void DFS(int v, int G[][MAX_VERTICES], int numVertices, bool visitados[]){
+    Pilha S;
+    criarPilha(S, MAX_VERTICES);
+
+    // Se o início for válido e ainda não visitado, empilha; se inválido,
+    // iremos procurar o próximo vértice não visitado abaixo.
+    if (v >= 0 && v < numVertices && !visitados[v])
+        empilhar(S, v);
+
+    while (true) {
+        // percorre a componente atual
+        while (!vazia(S)) {
+            int atual;
+            desempilhar(S, atual);
+
+            if (!foiVisitado(atual, visitados, numVertices)) {
+                visitar(atual, visitados, numVertices);
+
+                // empilha vizinhos (ordem invertida para manter comportamento original)
+                for (int e = numVertices - 1; e >= 0; --e) {
+                    if (G[atual][e] == 1 && !foiVisitado(e, visitados, numVertices)) {
+                        empilhar(S, e);
+                    }
+                }
+            }
+        }
+
+        // componente atual terminada -> procura próximo vértice não visitado
+        int proximo = -1;
+        for (int i = 0; i < numVertices; ++i) {
+            if (!visitados[i]) { proximo = i; break; }
+        }
+
+        if (proximo == -1) break; // todos visitados, termina DFS
+        empilhar(S, proximo); // inicia nova componente
+    }
+
+    destruirPilha(S);
+}
+
 
 
 // Verifica se existe caminho entre dois vértices (u -> w) usando BFS.
@@ -152,6 +175,75 @@ bool verticeExiste(int v, int numVertices) {
     return v >= 0 && v < numVertices;
 }
 
+void removerVertice(int G[][MAX_VERTICES], int &numVertices, int vertice) {
+    if (numVertices <= 0) {
+        cout << "Grafo vazio. Nada a remover.\n";
+        return;
+    }
+    if (vertice < 1 || vertice > numVertices) {
+        cout << "Índice de vértice inválido. Deve estar entre 1 e " << numVertices << ".\n";
+        return;
+    }
+    int idx = vertice - 1; // 0-based
+
+    // desloca linhas para cima a partir de idx
+    for (int i = idx; i < numVertices - 1; ++i) {
+        for (int j = 0; j < numVertices; ++j) {
+            G[i][j] = G[i+1][j];
+        }
+    }
+    // desloca colunas para a esquerda a partir de idx
+    for (int i = 0; i < numVertices - 1; ++i) {
+        for (int j = idx; j < numVertices - 1; ++j) {
+            G[i][j] = G[i][j+1];
+        }
+    }
+    // zera última linha/coluna (agora fora do novo tamanho)
+    int last = numVertices - 1;
+    for (int i = 0; i < numVertices; ++i) {
+        G[last][i] = 0;
+        G[i][last] = 0;
+    }
+
+    numVertices--;
+    cout << "Vértice " << vertice << " removido. Agora há " << numVertices << " vértices.\n";
+}
+
+void adicionarVertice(int G[][MAX_VERTICES], int &numVertices) {
+    if (numVertices >= MAX_VERTICES) {
+        cout << "Não é possível adicionar: limite de vértices (" << MAX_VERTICES << ") atingido.\n";
+        return;
+    }
+    numVertices++;
+    cout << "Vértice adicionado. Agora há " << numVertices << " vértices (último índice = " << numVertices << ").\n";
+}
+
+// Adiciona aresta/arco (1-based). Respeita se o grafo é direcionado.
+void adicionarAresta(int G[][MAX_VERTICES], int numVertices, int u, int v, bool dirigido) {
+    if (u < 1 || u > numVertices || v < 1 || v > numVertices) {
+        cout << "Aresta inválida. Índices devem estar entre 1 e " << numVertices << ".\n";
+        return;
+    }
+    u = u - 1;
+    v = v - 1;
+    G[u][v] = 1;
+    if (!dirigido) G[v][u] = 1;
+    cout << "Aresta adicionada \n";
+}
+
+// Remove aresta/arco (1-based). Respeita se o grafo é direcionado.
+void removerAresta(int G[][MAX_VERTICES], int numVertices, int u, int v, bool dirigido) {
+    if (u < 1 || u > numVertices || v < 1 || v > numVertices) {
+        cout << "Aresta inválida. Índices devem estar entre 1 e " << numVertices << ".\n";
+        return;
+    }
+    u = u - 1;
+    v = v - 1;
+    G[u][v] = 0;
+    if (!dirigido) G[v][u] = 0;
+   cout << "Aresta removida \n";
+}
+
 int main() {
     int grafo[MAX_VERTICES][MAX_VERTICES] = {{0}}; // Matriz de adjacência
     int numVertices;
@@ -189,15 +281,10 @@ int main() {
         }
     }while(resposta != 's' && resposta != 'n');
     
-    // Entrada: número de arestas 
-    int numArestas;
-    cout << "Digite o número de arestas: ";
-    cin >> numArestas;
-
+    int u, v;
     //  Entrada: leitura das arestas
-    cout << "Digite as arestas (u v):" << endl;
-    for(int k = 0; k < numArestas; k++){
-        int u, v;
+    cout << "Digite as arestas (u v e 0 0 caso queira parar):" << endl;
+    do{
         cin >> u >> v;
         u--; v--; // Ajusta para índice base 0
 
@@ -206,11 +293,12 @@ int main() {
             grafo[u][v] = 1;
             if(!dirigido) // Se não for direcionado, adiciona na outra direção também
                 grafo[v][u] = 1;
-        } else {
+        }else if(u != -1 && v != -1) {
+            cout << "Você terminou de digitar.\n";
+        }else {
             cout << "Aresta inválida! Ignorada.\n";
-            k--; // Força o usuário a digitar de novo
         }
-    }
+    }while(u != -1 || v != -1);
 
     // Menu de operações 
     int opcao;
@@ -222,6 +310,10 @@ int main() {
         cout << "4. Mostrar grafo\n";
         cout << "5. Pesquisar vértice\n";
         cout << "6. Sair\n";
+        cout << "7. Adicionar vértice\n";
+        cout << "8. Remover vértice\n";
+        cout << "9. Adicionar aresta/arco\n";
+        cout << "10. Remover aresta/arco\n";
         cout << "Escolha: ";
         cin >> opcao;
 
@@ -236,11 +328,6 @@ int main() {
                 cout << "\n DFS \n";
                 DFS(v, grafo, numVertices, visitados);
 
-                // Caso o grafo seja desconexo, percorremos os outros vértices
-                for(int i = 0; i < numVertices; i++){
-                    if(!visitados[i])
-                        DFS(i, grafo, numVertices, visitados);
-                }
                 break;
             }
             case 2: {
@@ -253,11 +340,6 @@ int main() {
                 cout << "\n BFS \n";
                 BFS(v, grafo, numVertices, visitados);
 
-                // Caso o grafo seja desconexo
-                for(int i = 0; i < numVertices; i++){
-                    if(!visitados[i])
-                        BFS(i, grafo, numVertices, visitados);
-                }
                 break;
             }
             case 3: {
@@ -293,6 +375,31 @@ int main() {
             case 6:
                 cout << "Encerrando programa.\n";
                 break;
+            case 7: { // Adicionar vértice
+                adicionarVertice(grafo, numVertices);
+                break;
+            }
+            case 8: { // Remover vértice
+                int v;
+                cout << "Digite o vértice a remover (1 a " << numVertices << "): ";
+                if (!(cin >> v)) { cout << "Entrada inválida.\n"; cin.clear(); cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); break; }
+                removerVertice(grafo, numVertices, v);
+                break;
+            }
+            case 9: { // Adicionar aresta/arco
+                int a,b;
+                cout << "Digite a aresta (u v): ";
+                if (!(cin >> a >> b)) { cout << "Entrada inválida.\n"; cin.clear(); cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); break; }
+                adicionarAresta(grafo, numVertices, a, b, dirigido);
+                break;
+            }
+            case 10: { // Remover aresta/arco
+                int a,b;
+                cout << "Digite a aresta a remover (u v): ";
+                if (!(cin >> a >> b)) { cout << "Entrada inválida.\n"; cin.clear(); cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); break; }
+                removerAresta(grafo, numVertices, a, b, dirigido);
+                break;
+            }
             default:
                 cout << "Opção inválida! Tente novamente.\n";
         }
